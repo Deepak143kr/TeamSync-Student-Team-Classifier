@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TeamSync — Student Compatibility Classifier</title>
+<style>
+/* ─── BASE STYLES ──────────────────────────────────────── */
+:root {
+  --bg: #f9f9f9;
+  --text: #222;
+  --border: #ccc;
+  --accent: #0056b3;
+  --muted: #666;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  padding: 20px;
+}
+
+.wrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ─── HEADER ────────────────────────────────────────────── */
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ─── MODEL STATUS ───────────────────────────────────────── */
+#model-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  justify-content: center;
+  background: #f1f1f1;
+  border: 1px solid var(--border);
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 30px;
+  font-size: 0.9rem;
+}
+
+/* ─── FORM & QUESTIONS ───────────────────────────────────── */
+.form-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.questions-grid {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.q-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.q-label {
+  font-weight: 600;
+}
+
+.q-desc {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+input[type=range] {
+  flex: 1;
+}
+
+.slider-val {
+  font-weight: bold;
+  width: 20px;
+  text-align: center;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ─── BUTTONS ────────────────────────────────────────────── */
+button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.submit-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.retry-btn {
+  background: #f1f1f1;
+  color: var(--text);
+  margin-top: 20px;
+}
+
+/* ─── RESULTS ────────────────────────────────────────────── */
+#result-section {
+  display: none;
+}
+
+.agree-banner {
+  text-align: center;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-weight: bold;
+  background: #eef;
+}
+
+.predictions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+@media (max-width: 600px) {
+  .predictions-grid { grid-template-columns: 1fr; }
+}
+
+.pred-card {
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 6px;
+  background: #fdfdfd;
+}
+
+.pred-model-label {
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.pred-persona-name {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.pred-desc {
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.pred-traits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.pred-trait {
+  font-size: 0.8rem;
+  background: #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* ─── BARS ───────────────────────────────────────────────── */
+.conf-bar, .proba-bar-wrap {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.conf-fill, .proba-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+  width: 0;
+}
+
+.proba-section {
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 6px;
+}
+
+.proba-title {
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.proba-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.proba-name {
+  width: 150px;
+  font-size: 0.9rem;
+}
+
+.proba-pct {
+  width: 40px;
+  text-align: right;
+  font-size: 0.9rem;
+}
+
+/* ─── ERROR ──────────────────────────────────────────────── */
+.error-msg {
+  text-align: center;
+  color: #d9534f;
+  margin-top: 15px;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <h1>TeamSync AI</h1>
+    <p class="subtitle">Answer 7 quick questions and our ML models will match you to a student personality cluster.</p>
+  </header>
+
+  <div id="model-status">
+    <div>Loading models...</div>
+  </div>
+
+  <div id="form-section">
+    <div class="form-header">
+      <h2>Student Survey</h2>
+      <p>Rate each trait from 1 (low) to 5 (high)</p>
+    </div>
+
+    <div class="questions-grid" id="questions-grid">
+      </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="predict()">Classify My Team Type</button>
+    <div id="error-msg"></div>
+  </div>
+
+  <div id="result-section">
+    <div class="agree-banner" id="agree-banner"></div>
+
+    <div class="predictions-grid">
+      <div class="pred-card" id="knn-card">
+        <div class="pred-model-label">KNN Model</div>
+        <div class="pred-persona-name" id="knn-name"></div>
+        <div class="pred-desc" id="knn-desc"></div>
+        <div class="pred-traits" id="knn-traits"></div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+            <span>Confidence</span><strong id="knn-conf"></strong>
+          </div>
+          <div class="conf-bar"><div class="conf-fill" id="knn-conf-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="pred-card" id="dt-card">
+        <div class="pred-model-label">Decision Tree Model</div>
+        <div class="pred-persona-name" id="dt-name"></div>
+        <div class="pred-desc" id="dt-desc"></div>
+        <div class="pred-traits" id="dt-traits"></div>
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+            <span>Confidence</span><strong id="dt-conf"></strong>
+          </div>
+          <div class="conf-bar"><div class="conf-fill" id="dt-conf-fill"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="proba-section">
+      <div class="proba-title">KNN Probability Across All Clusters</div>
+      <div id="proba-bars"></div>
+    </div>
+
+    <button class="retry-btn" onclick="resetForm()">Retake the Survey</button>
+  </div>
+
+</div>
+
+<script>
+const QUESTIONS = [
+  { id: 'Late_Night_Pref', label: 'Late Night Preference', desc: 'How much do you prefer working late at night vs. daytime?', low: 'Day person', high: 'Night owl' },
+  { id: 'In_Person_Pref',  label: 'In-Person Preference',  desc: 'Do you prefer collaborating in-person or remotely?',        low: 'Fully remote', high: 'Always in-person' },
+  { id: 'Stress_Level',    label: 'Stress Tolerance',       desc: 'How well do you handle high-pressure work environments?',  low: 'Very low', high: 'Very high' },
+  { id: 'Target_Grade',    label: 'Grade Ambition',         desc: 'How important are top grades to you in this project?',     low: 'Just pass', high: 'Top of class' },
+  { id: 'Role_Pref',       label: 'Leadership Preference',  desc: 'Do you prefer leading the team or following direction?',   low: 'Team follower', high: 'Strong leader' },
+  { id: 'Skill_Diversity', label: 'Skill Diversity Value',  desc: 'Do you prefer teammates with diverse or similar skills?',  low: 'Same skills', high: 'Diverse skills' },
+  { id: 'Pacing',          label: 'Work Pacing',            desc: 'Do you prefer fast sprints or a slow and steady approach?',low: 'Slow & steady', high: 'Full sprint' },
+];
+
+const PERSONA_NAMES = {
+  0: 'Night-Owl Hustler', 1: 'Balanced Socializer',
+  2: 'Structured Achiever', 3: 'Solo Coder', 4: 'Relaxed Collaborator'
+};
+
+function buildForm() {
+  const grid = document.getElementById('questions-grid');
+  grid.innerHTML = QUESTIONS.map(q => `
+    <div class="q-block">
+      <div class="q-label">${q.label}</div>
+      <div class="q-desc">${q.desc}</div>
+      <div class="slider-wrap">
+        <input type="range" min="1" max="5" value="3" id="${q.id}" oninput="updateVal('${q.id}', this.value)" />
+        <div class="slider-val" id="val_${q.id}">3</div>
+      </div>
+      <div class="slider-labels"><span>${q.low}</span><span>${q.high}</span></div>
+    </div>
+  `).join('');
+}
+
+function updateVal(id, val) {
+  document.getElementById('val_' + id).textContent = val;
+}
+
+async function loadModelInfo() {
+  try {
+    const res = await fetch('/api/model-info');
+    const data = await res.json();
+    const bar = document.getElementById('model-status');
+    bar.innerHTML = `
+      <span>Trained on 5,000 students</span> | 
+      <span>KNN (k=${data.knn.k}): ${data.knn.accuracy}% acc</span> | 
+      <span>Decision Tree (depth=${data.dt.depth}): ${data.dt.accuracy}% acc</span>
+    `;
+  } catch {
+    document.getElementById('model-status').innerHTML = '<span style="color:red">Cannot connect to server</span>';
+  }
+}
+
+async function predict() {
+  const payload = {};
+  QUESTIONS.forEach(q => { payload[q.id] = parseInt(document.getElementById(q.id).value); });
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Classifying...';
+  document.getElementById('error-msg').innerHTML = '';
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    showResults(data);
+  } catch (e) {
+    document.getElementById('error-msg').textContent = e.message || 'Error: Could not reach server.';
+    btn.disabled = false;
+    btn.textContent = 'Classify My Team Type';
+  }
+}
+
+function showResults(data) {
+  document.getElementById('form-section').style.display = 'none';
+  const rs = document.getElementById('result-section');
+  rs.style.display = 'block';
+
+  const banner = document.getElementById('agree-banner');
+  if (data.agree) {
+    banner.innerHTML = `Models match! You are a: ${data.knn.name}`;
+  } else {
+    banner.innerHTML = `Models disagree. KNN: ${data.knn.name} | DT: ${data.dt.name}`;
+  }
+
+  fillCard('knn', data.knn);
+  fillCard('dt',  data.dt);
+
+  const bars = document.getElementById('proba-bars');
+  bars.innerHTML = Object.entries(data.knn.probabilities).map(([i, pct]) => `
+    <div class="proba-row">
+      <div class="proba-name">${PERSONA_NAMES[i]}</div>
+      <div style="flex:1;"><div class="proba-bar-wrap"><div class="proba-bar-fill" id="pb_${i}"></div></div></div>
+      <div class="proba-pct">${pct}%</div>
+    </div>
+  `).join('');
+
+  setTimeout(() => {
+    Object.entries(data.knn.probabilities).forEach(([i, pct]) => {
+      const el = document.getElementById('pb_' + i);
+      if (el) el.style.width = pct + '%';
+    });
+    document.getElementById('knn-conf-fill').style.width = data.knn.confidence + '%';
+    document.getElementById('dt-conf-fill').style.width  = data.dt.confidence  + '%';
+  }, 50);
+
+  rs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fillCard(type, pred) {
+  document.getElementById(type + '-name').textContent  = pred.name;
+  document.getElementById(type + '-desc').textContent  = pred.description;
+  document.getElementById(type + '-conf').textContent  = pred.confidence + '%';
+  document.getElementById(type + '-traits').innerHTML  =
+    pred.traits.map(t => `<span class="pred-trait">${t}</span>`).join('');
+}
+
+function resetForm() {
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('form-section').style.display   = 'block';
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.textContent = 'Classify My Team Type';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+buildForm();
+loadModelInfo();
+</script>
+</body>
+</html>
