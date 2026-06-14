@@ -137,7 +137,7 @@ def train_pipeline():
 
 
 
-
+train_pipeline()
 @app.route('/')
 def index():
     return send_from_directory('../frontend/templates', 'index.html')
